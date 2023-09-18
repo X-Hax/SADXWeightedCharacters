@@ -154,18 +154,20 @@ const BasicWeightFuncs* weightFuncs;
 NJS_MATRIX matrix;
 void ProcessWeights(CharObj2* a3, NJS_OBJECT*& object, NJS_MOTION* motion, float frame)
 {
-	NJS_ACTION action = { object, motion };
 	map<NJS_OBJECT*, ModelWeightInfo>* weightinfo = (map<NJS_OBJECT*, ModelWeightInfo>*)a3->AnimationThing.WeldInfo;
-	auto nodeweights = weightinfo->find(object);
-	if (nodeweights != weightinfo->end())
+	switch (a3->AnimationThing.field_2)
 	{
-		switch (a3->AnimationThing.field_2)
+	case 0:
+		for (auto& nodeweights : *weightinfo)
+			weightFuncs->Init(nodeweights.second.weights, nodeweights.first);
+		a3->AnimationThing.field_2 = 1;
+		break;
+	case 1:
+	{
+		NJS_ACTION action = { object, motion };
+		auto nodeweights = weightinfo->find(object);
+		if (nodeweights != weightinfo->end())
 		{
-		case 0:
-			weightFuncs->Init(nodeweights->second.weights, object);
-			a3->AnimationThing.field_2 = 1;
-			break;
-		case 1:
 			weightFuncs->Apply(nodeweights->second.weights, &action, frame);
 			{
 				int* nodeidx = &nodeweights->second.rightHandNode;
@@ -180,11 +182,13 @@ void ProcessWeights(CharObj2* a3, NJS_OBJECT*& object, NJS_MOTION* motion, float
 					njCalcVector(matrix, &norm, &a3->SoManyVectors[i + 6]);
 				}
 			}
-			break;
-		default:
-			weightFuncs->DeInit(nodeweights->second.weights, object);
-			break;
 		}
+	}
+	break;
+	default:
+		for (auto& nodeweights : *weightinfo)
+			weightFuncs->DeInit(nodeweights.second.weights, nodeweights.first);
+		break;
 	}
 }
 
@@ -328,6 +332,62 @@ extern "C"
 				auto lsrweights = weights.find(objectsArray[60]);
 				auto lslweights = weights.find(objectsArray[58]);
 				if (lsrweights != weights.end() || lslweights != weights.end())
+				{
+					int newcnt = rootweights->second.weights->nodeCount;
+					if (lsrweights != weights.end())
+						newcnt += lsrweights->second.weights->nodeCount;
+					if (lslweights != weights.end())
+						newcnt += lslweights->second.weights->nodeCount;
+					auto tmp = new WeightNode[newcnt];
+					memcpy(tmp, rootweights->second.weights->nodes, rootweights->second.weights->nodeCount * sizeof(WeightNode));
+					int dst = rootweights->second.weights->nodeCount;
+					if (lsrweights != weights.end())
+					{
+						memcpy(&tmp[dst], lsrweights->second.weights->nodes, lsrweights->second.weights->nodeCount * sizeof(WeightNode));
+						dst += lsrweights->second.weights->nodeCount;
+					}
+					if (lslweights != weights.end())
+					{
+						memcpy(&tmp[dst], lslweights->second.weights->nodes, lslweights->second.weights->nodeCount * sizeof(WeightNode));
+						dst += lslweights->second.weights->nodeCount;
+					}
+					rootweights->second.weights = new WeightInfo{ tmp, newcnt };
+				}
+			}
+		}
+		if (charInfos[Characters_Tails].modelWeights.size() > 0)
+		{
+			NJS_OBJECT** objectsArray = (NJS_OBJECT**)GetProcAddress(hmod, "___MILES_OBJECTS");
+			auto& weights = charInfos[Characters_Tails].modelWeights;
+			auto lsrweights = weights.find(objectsArray[65]);
+			auto lslweights = weights.find(objectsArray[64]);
+			if (lsrweights != weights.end() || lslweights != weights.end())
+			{
+				auto rootweights = weights.find(objectsArray[0]);
+				if (rootweights != weights.end())
+				{
+					int newcnt = rootweights->second.weights->nodeCount;
+					if (lsrweights != weights.end())
+						newcnt += lsrweights->second.weights->nodeCount;
+					if (lslweights != weights.end())
+						newcnt += lslweights->second.weights->nodeCount;
+					auto tmp = new WeightNode[newcnt];
+					memcpy(tmp, rootweights->second.weights->nodes, rootweights->second.weights->nodeCount * sizeof(WeightNode));
+					int dst = rootweights->second.weights->nodeCount;
+					if (lsrweights != weights.end())
+					{
+						memcpy(&tmp[dst], lsrweights->second.weights->nodes, lsrweights->second.weights->nodeCount * sizeof(WeightNode));
+						dst += lsrweights->second.weights->nodeCount;
+					}
+					if (lslweights != weights.end())
+					{
+						memcpy(&tmp[dst], lslweights->second.weights->nodes, lslweights->second.weights->nodeCount * sizeof(WeightNode));
+						dst += lslweights->second.weights->nodeCount;
+					}
+					rootweights->second.weights = new WeightInfo{ tmp, newcnt };
+				}
+				rootweights = weights.find(objectsArray[1]);
+				if (rootweights != weights.end())
 				{
 					int newcnt = rootweights->second.weights->nodeCount;
 					if (lsrweights != weights.end())
