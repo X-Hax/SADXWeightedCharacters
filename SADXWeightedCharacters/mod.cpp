@@ -411,6 +411,8 @@ extern "C"
 				}
 			}
 		}
+		if (charInfos[Characters_Knuckles].modelWeights.size() > 0)
+			WriteData((char*)0x4726A0, (char)0xC3); // disable upgrades
 		WriteData<2>((void*)0x49BE22, 0x90u); // enable welds for sonic's spin model
 		ProcessVertexWelds_h.Hook(ProcessVertexWelds_Check);
 		EPJoinVertexes_h.Hook(EPJoinVertexes_Check);
