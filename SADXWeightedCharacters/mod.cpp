@@ -3,6 +3,7 @@
 #include "IniFile.hpp"
 #include "ModelInfo.h"
 #include "FunctionHook.h"
+#include "UsercallFunctionHandler.h"
 #include <map>
 #include <vector>
 
@@ -42,19 +43,33 @@ struct CharInfo
 const intptr_t sonicWeldPointers[] = {
 	0x49AB7E,
 	0x49ABAC,
-	0x49ACB6
+	0x49ACB6,
+	0x7D27BA,
+	0x7D30A0,
+	0x7D58B1,
+	0x7D5D21
 };
 
 const intptr_t tailsWeldPointers[] = {
-	0x461896
+	0x461896,
+	0x7D2867,
+	0x7D3149,
+	0x7D595A,
+	0x7D5DB5
 };
 
 const intptr_t knucklesWeldPointers[] = {
-	0x47A89E
+	0x47A89E,
+	0x7D2914,
+	0x7D31F6,
+	0x7D33D3,
+	0x7D5A01
 };
 
 const intptr_t amyWeldPointers[] = {
-	0x48AD0B
+	0x48AD0B,
+	0x7D29C1,
+	0x7D5AB6
 };
 
 const intptr_t gammaWeldPointers[] = {
@@ -62,7 +77,10 @@ const intptr_t gammaWeldPointers[] = {
 };
 
 const intptr_t bigWeldPointers[] = {
-	0x490C14
+	0x490C14,
+	0x7D2B04,
+	0x7D329B,
+	0x7D5BF4
 };
 
 const intptr_t metalWeldPointers[] = {
@@ -249,6 +267,59 @@ void __cdecl EPJoinVertexes_Check(char index, NJS_OBJECT* object, NJS_MOTION* mo
 		EPJoinVertexes_h.Original(index, object, motion, frame);
 }
 
+UsercallFuncVoid(mr_join_vertex_init, (PL_JOIN_VERTEX* join_vtx_p), (join_vtx_p), 0x51A7A0, rEAX);
+void __cdecl mr_join_vertex_init_Check(PL_JOIN_VERTEX* join_vtx_p)
+{
+	for (auto& ch : charInfos)
+		if ((void*)join_vtx_p == &ch.second.modelWeights)
+		{
+			for (auto& nodeweights : ch.second.modelWeights)
+				weightFuncs->Init(nodeweights.second.weights, nodeweights.first);
+			return;
+		}
+	mr_join_vertex_init.Original(join_vtx_p);
+}
+
+UsercallFuncVoid(mr_join_vertex_exec, (NJS_ACTION* act_p, PL_JOIN_VERTEX* join_vtx_p, NJS_MATRIX_PTR mat_p, int obj_num, float frame), (act_p, join_vtx_p, mat_p, obj_num, frame), 0x52EBA0, rEAX, rECX);
+void __cdecl mr_join_vertex_exec_Check(NJS_ACTION* act_p, PL_JOIN_VERTEX* join_vtx_p, NJS_MATRIX_PTR mat_p, int obj_num, float frame)
+{
+	for (auto& ch : charInfos)
+		if ((void*)join_vtx_p == &ch.second.modelWeights)
+		{
+			auto nodeweights = ch.second.modelWeights.find(act_p->object);
+			if (nodeweights != ch.second.modelWeights.end())
+				weightFuncs->Apply(nodeweights->second.weights, act_p, frame);
+			return;
+		}
+	mr_join_vertex_exec.Original(act_p, join_vtx_p, mat_p, obj_num, frame);
+}
+
+UsercallFuncVoid(mr_join_vertex_end, (PL_JOIN_VERTEX* join_vtx_p), (join_vtx_p), 0x52ED50, rEAX);
+void __cdecl mr_join_vertex_end_Check(PL_JOIN_VERTEX* join_vtx_p)
+{
+	for (auto& ch : charInfos)
+		if ((void*)join_vtx_p == &ch.second.modelWeights)
+		{
+			for (auto& nodeweights : ch.second.modelWeights)
+				weightFuncs->DeInit(nodeweights.second.weights, nodeweights.first);
+			return;
+		}
+	mr_join_vertex_end.Original(join_vtx_p);
+}
+
+UsercallFuncVoid(ec_join_vertex_end, (PL_JOIN_VERTEX* join_vtx_p), (join_vtx_p), 0x51A8D0, rEAX);
+void __cdecl ec_join_vertex_end_Check(PL_JOIN_VERTEX* join_vtx_p)
+{
+	for (auto& ch : charInfos)
+		if ((void*)join_vtx_p == &ch.second.modelWeights)
+		{
+			for (auto& nodeweights : ch.second.modelWeights)
+				weightFuncs->DeInit(nodeweights.second.weights, nodeweights.first);
+			return;
+		}
+	ec_join_vertex_end.Original(join_vtx_p);
+}
+
 extern "C"
 {
 	__declspec(dllexport) void Init(const char* path, const HelperFunctions& helperFunctions)
@@ -416,6 +487,10 @@ extern "C"
 		WriteData<2>((void*)0x49BE22, 0x90u); // enable welds for sonic's spin model
 		ProcessVertexWelds_h.Hook(ProcessVertexWelds_Check);
 		EPJoinVertexes_h.Hook(EPJoinVertexes_Check);
+		mr_join_vertex_init.Hook(mr_join_vertex_init_Check);
+		mr_join_vertex_exec.Hook(mr_join_vertex_exec_Check);
+		mr_join_vertex_end.Hook(mr_join_vertex_end_Check);
+		ec_join_vertex_end.Hook(ec_join_vertex_end_Check);
 	}
 
 	__declspec(dllexport) ModInfo SADXModInfo = { ModLoaderVer };
