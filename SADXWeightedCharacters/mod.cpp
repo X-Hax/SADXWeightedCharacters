@@ -193,8 +193,8 @@ void ProcessWeights(CharObj2* a3, NJS_OBJECT*& object, NJS_MOTION* motion, float
 				for (int i = 0; i < 6; i++)
 					if (*nodeidx != -1)
 					{
-						NJS_VECTOR pos;
-						NJS_VECTOR norm;
+						NJS_VECTOR pos{};
+						NJS_VECTOR norm{};
 						(&norm.x)[dir[i]] = 1;
 						SetInstancedMatrix(nodeidx[i], matrix);
 						njCalcPoint(matrix, &pos, &a3->SoManyVectors[i]);
