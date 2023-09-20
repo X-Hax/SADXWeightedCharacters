@@ -13,19 +13,19 @@ using std::string;
 
 struct ModelWeightInfo
 {
-	int rightHandNode;
-	int leftHandNode;
-	int rightFootNode;
-	int leftFootNode;
-	int user0Node;
-	int user1Node;
+	WeightInfo* weights;
+	int rightHandNode = -1;
+	int leftHandNode = -1;
+	int rightFootNode = -1;
+	int leftFootNode = -1;
+	int user0Node = -1;
+	int user1Node = -1;
 	int rightHandDir;
 	int leftHandDir;
 	int rightFootDir;
 	int leftFootDir;
 	int user0Dir;
 	int user1Dir;
-	WeightInfo* weights;
 };
 
 struct CharInfo
@@ -191,14 +191,15 @@ void ProcessWeights(CharObj2* a3, NJS_OBJECT*& object, NJS_MOTION* motion, float
 				int* nodeidx = &nodeweights->second.rightHandNode;
 				int* dir = &nodeweights->second.rightHandDir;
 				for (int i = 0; i < 6; i++)
-				{
-					NJS_VECTOR pos;
-					NJS_VECTOR norm;
-					(&norm.x)[dir[i]] = 1;
-					SetInstancedMatrix(nodeidx[i], matrix);
-					njCalcPoint(matrix, &pos, &a3->SoManyVectors[i]);
-					njCalcVector(matrix, &norm, &a3->SoManyVectors[i + 6]);
-				}
+					if (*nodeidx != -1)
+					{
+						NJS_VECTOR pos;
+						NJS_VECTOR norm;
+						(&norm.x)[dir[i]] = 1;
+						SetInstancedMatrix(nodeidx[i], matrix);
+						njCalcPoint(matrix, &pos, &a3->SoManyVectors[i]);
+						njCalcVector(matrix, &norm, &a3->SoManyVectors[i + 6]);
+					}
 			}
 		}
 	}
@@ -320,6 +321,15 @@ void __cdecl ec_join_vertex_end_Check(PL_JOIN_VERTEX* join_vtx_p)
 	ec_join_vertex_end.Original(join_vtx_p);
 }
 
+std::pair<string, string> nodeKeys[] = {
+	{ "RightHandPosition", "RightHandDirection" },
+	{ "LeftHandPosition", "LeftHandDirection" },
+	{ "RightFootPosition", "RightFootDirection" },
+	{ "LeftFootPosition", "LeftFootDirection" },
+	{ "User0Position", "User0Direction" },
+	{ "User1Position", "User1Direction" }
+};
+
 extern "C"
 {
 	__declspec(dllexport) void Init(const char* path, const HelperFunctions& helperFunctions)
@@ -357,18 +367,6 @@ extern "C"
 					labels[i->first] = i->second;
 				auto root = mdl->getmodel();
 				charinf.second.modelWeights.insert_or_assign(root, ModelWeightInfo{
-					GetNodeIndex(root, mdl->getrighthandnode()),
-					GetNodeIndex(root, mdl->getlefthandnode()),
-					GetNodeIndex(root, mdl->getrightfootnode()),
-					GetNodeIndex(root, mdl->getleftfootnode()),
-					GetNodeIndex(root, mdl->getuser0node()),
-					GetNodeIndex(root, mdl->getuser1node()),
-					mdl->getrighthanddir(),
-					mdl->getlefthanddir(),
-					mdl->getrightfootdir(),
-					mdl->getleftfootdir(),
-					mdl->getuser0dir(),
-					mdl->getuser1dir(),
 					mdl->getweightinfo()
 					});
 			} while (FindNextFileA(hFind, &data) != 0);
@@ -378,6 +376,31 @@ extern "C"
 			for (auto i = mdlgrp->cbegin(); i != mdlgrp->cend(); ++i)
 				if (labels.find(i->second) != labels.cend())
 					objectsArray[std::stol(i->first)] = (NJS_OBJECT*)labels[i->second];
+			for (auto i = mdlini->cbegin(); i != mdlini->cend(); ++i)
+			{
+				auto node = labels.find(i->first);
+				if (node == labels.end())
+					continue;
+				auto weights = charinf.second.modelWeights.find(static_cast<NJS_OBJECT*>(node->second));
+				if (weights == charinf.second.modelWeights.end())
+					continue;
+				auto nodeidx = &weights->second.rightHandNode;
+				auto dirptr = &weights->second.rightHandDir;
+				for (auto& keys : nodeKeys)
+				{
+					if (i->second->hasKeyNonEmpty(keys.first))
+					{
+						*nodeidx = GetNodeIndex(weights->first, static_cast<NJS_OBJECT*>(labels[i->second->getString(keys.first)]));
+						auto dir = i->second->getString(keys.second, "X");
+						if (dir == "Y")
+							*dirptr = 1;
+						else if (dir == "Z")
+							*dirptr = 2;
+					}
+					++nodeidx;
+					++dirptr;
+				}
+			}
 			delete mdlini;
 			for (int i = 0; i < charinf.second.actionsLength; i++)
 				if (actionsArray[i])
