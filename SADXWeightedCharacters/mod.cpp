@@ -234,11 +234,11 @@ void __cdecl ProcessVertexWelds_Check(EntityData1* a1, EntityData2* a2, CharObj2
 		}
 		if (MetalSonicFlag)
 		{
-			if (object = SONIC_OBJECTS[0])
+			if (object == SONIC_OBJECTS[0])
 				object = SONIC_OBJECTS[68];
-			else if (object = SONIC_OBJECTS[66])
+			else if (object == SONIC_OBJECTS[66])
 				object = SONIC_OBJECTS[69];
-			else if (object = SONIC_OBJECTS[67])
+			else if (object == SONIC_OBJECTS[67])
 				object = SONIC_OBJECTS[70];
 		}
 		ProcessWeights(a3, object, motion, a3->AnimationThing.Frame);
