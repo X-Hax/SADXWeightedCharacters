@@ -281,8 +281,8 @@ void __cdecl mr_join_vertex_init_Check(PL_JOIN_VERTEX* join_vtx_p)
 	mr_join_vertex_init.Original(join_vtx_p);
 }
 
-UsercallFuncVoid(mr_join_vertex_exec, (NJS_ACTION* act_p, PL_JOIN_VERTEX* join_vtx_p, NJS_MATRIX_PTR mat_p, int obj_num, float frame), (act_p, join_vtx_p, mat_p, obj_num, frame), 0x52EBA0, rEAX, rECX);
-void __cdecl mr_join_vertex_exec_Check(NJS_ACTION* act_p, PL_JOIN_VERTEX* join_vtx_p, NJS_MATRIX_PTR mat_p, int obj_num, float frame)
+UsercallFuncVoid(mr_join_vertex_exec, (Uint32 obj_num, PL_JOIN_VERTEX* join_vtx_p, NJS_ACTION* act_p, NJS_MATRIX* mat_p, Float frame), (obj_num, join_vtx_p, act_p, mat_p, frame), 0x52EBA0, rEAX, rECX, stack4, stack4, stack4);
+void __cdecl mr_join_vertex_exec_Check(Uint32 obj_num, PL_JOIN_VERTEX* join_vtx_p, NJS_ACTION* act_p, NJS_MATRIX* mat_p, Float frame)
 {
 	for (auto& ch : charInfos)
 		if ((void*)join_vtx_p == &ch.second.modelWeights)
@@ -292,7 +292,8 @@ void __cdecl mr_join_vertex_exec_Check(NJS_ACTION* act_p, PL_JOIN_VERTEX* join_v
 				weightFuncs->Apply(nodeweights->second.weights, act_p, frame);
 			return;
 		}
-	mr_join_vertex_exec.Original(act_p, join_vtx_p, mat_p, obj_num, frame);
+
+	mr_join_vertex_exec.Original(obj_num, join_vtx_p, act_p, mat_p, frame);
 }
 
 UsercallFuncVoid(mr_join_vertex_end, (PL_JOIN_VERTEX* join_vtx_p), (join_vtx_p), 0x52ED50, rEAX);
