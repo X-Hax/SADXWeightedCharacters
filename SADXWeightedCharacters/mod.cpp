@@ -6,39 +6,13 @@
 #include "UsercallFunctionHandler.h"
 #include <map>
 #include <vector>
+#include "weights.h"
 
 using std::map;
 using std::vector;
 using std::string;
+extern bool isMPMod;
 
-struct ModelWeightInfo
-{
-	WeightInfo* weights;
-	int rightHandNode = -1;
-	int leftHandNode = -1;
-	int rightFootNode = -1;
-	int leftFootNode = -1;
-	int user0Node = -1;
-	int user1Node = -1;
-	int rightHandDir;
-	int leftHandDir;
-	int rightFootDir;
-	int leftFootDir;
-	int user0Dir;
-	int user1Dir;
-};
-
-struct CharInfo
-{
-	const char* modelPath;
-	const char* objectsArray;
-	int objectsLength;
-	const char* actionsArray;
-	int actionsLength;
-	const intptr_t* pointersArray;
-	int pointersLength;
-	map<NJS_OBJECT*, ModelWeightInfo> modelWeights;
-};
 
 const intptr_t sonicWeldPointers[] = {
 	0x49AB7E,
@@ -211,6 +185,32 @@ void ProcessWeights(CharObj2* a3, NJS_OBJECT*& object, NJS_MOTION* motion, float
 	}
 }
 
+void __cdecl ProcessVertexWelds_Check_(EntityData1* a1, EntityData2* a2, CharObj2* a3)
+{
+	NJS_OBJECT* object;
+	NJS_MOTION* motion;
+	if (a3->AnimationThing.State == 2)
+	{
+		object = a3->AnimationThing.action->object;
+		motion = a3->AnimationThing.action->motion;
+	}
+	else
+	{
+		object = a3->AnimationThing.AnimData[(unsigned __int16)a3->AnimationThing.Index].Animation->object;
+		motion = a3->AnimationThing.AnimData[(unsigned __int16)a3->AnimationThing.Index].Animation->motion;
+	}
+	if (MetalSonicFlag)
+	{
+		if (object == SONIC_OBJECTS[0])
+			object = SONIC_OBJECTS[68];
+		else if (object == SONIC_OBJECTS[66])
+			object = SONIC_OBJECTS[69];
+		else if (object == SONIC_OBJECTS[67])
+			object = SONIC_OBJECTS[70];
+	}
+	ProcessWeights(a3, object, motion, a3->AnimationThing.Frame);
+}
+
 FunctionHook<void, EntityData1*, EntityData2*, CharObj2*> ProcessVertexWelds_h(ProcessVertexWelds);
 void __cdecl ProcessVertexWelds_Check(EntityData1* a1, EntityData2* a2, CharObj2* a3)
 {
@@ -220,28 +220,10 @@ void __cdecl ProcessVertexWelds_Check(EntityData1* a1, EntityData2* a2, CharObj2
 	auto charinf = charInfos.find(id);
 	if (charinf != charInfos.end() && charinf->second.modelWeights.size() > 0)
 	{
-		NJS_OBJECT* object;
-		NJS_MOTION* motion;
-		if (a3->AnimationThing.State == 2)
-		{
-			object = a3->AnimationThing.action->object;
-			motion = a3->AnimationThing.action->motion;
-		}
-		else
-		{
-			object = a3->AnimationThing.AnimData[(unsigned __int16)a3->AnimationThing.Index].Animation->object;
-			motion = a3->AnimationThing.AnimData[(unsigned __int16)a3->AnimationThing.Index].Animation->motion;
-		}
-		if (MetalSonicFlag)
-		{
-			if (object == SONIC_OBJECTS[0])
-				object = SONIC_OBJECTS[68];
-			else if (object == SONIC_OBJECTS[66])
-				object = SONIC_OBJECTS[69];
-			else if (object == SONIC_OBJECTS[67])
-				object = SONIC_OBJECTS[70];
-		}
-		ProcessWeights(a3, object, motion, a3->AnimationThing.Frame);
+		if (isMPMod) //we don't want this whole function to run at all if MP is enabled, the code will run externally in the character display function for accurate render
+			return;
+
+		ProcessVertexWelds_Check_(a1, a2, a3);
 	}
 	else
 		ProcessVertexWelds_h.Original(a1, a2, a3);
@@ -515,6 +497,8 @@ extern "C"
 		mr_join_vertex_exec.Hook(mr_join_vertex_exec_Check);
 		mr_join_vertex_end.Hook(mr_join_vertex_end_Check);
 		ec_join_vertex_end.Hook(ec_join_vertex_end_Check);
+
+		initWeightsMultiplayer();
 	}
 
 	__declspec(dllexport) ModInfo SADXModInfo = { ModLoaderVer };
